@@ -1,0 +1,20 @@
+earlyVsLateCutoffDays: 0   # division between early and late timepoints; early <= this value in days.
+inputDataPath: data/SCID3_intSites.tsv
+outputDirPath: ./output_SCID3
+minSampleAbund: 25
+minGeneSubjects: 2
+minAbundCatThreshold: 25
+maxDistNearestGene: 50000
+longitudinal_minNumSubjects: 3
+longitudinal_minNumSites: 3
+longitudinal_minNumTimepoints: 3
+longitudinal_minTimeDays: 90
+volcanoPlot_numTopGeneLabels: 12
+HGNC_symbols: data/HGNC_symbols.tsv
+COSMIC_oncogene_table: data/COSMIC_oncogenes.txt
+COSMIC_tsg_table: data/COSMIC_oncogenes_tumor_suppressors.txt
+allOnco_oncogene_table: data/allOnco.txt
+geneNameReassignment_table: data/geneNameReassignments.tsv
+scanStatsBEDfileURL: http://genome.ucsc.edu/cgi-bin/hgTracks?org=human&db=hg38&hgt.customText=https://microb120.med.upenn.edu/data/export/UCSC/SCID3_GOI.ucsc
+reportTitle: SCID3 gene of interest report
+reportAuthor: John K. Everett

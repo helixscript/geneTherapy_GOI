@@ -1,0 +1,352 @@
+---
+fontsize: 12pt
+geometry: margin=0.50in
+subparagraph: yes
+params: 
+    title:  "title"
+    date:   "0000-00-00"
+    author: "None"
+title:  "`r params$title`"
+date:   "`r params$date`"
+author: "`r params$author`"
+header-includes:
+   - \usepackage{caption}
+   - \usepackage{longtable}
+   - \usepackage{titlesec}
+   - \usepackage{array}
+   - \usepackage{makecell}
+   - \usepackage{booktabs}
+   - \usepackage{colortbl}
+   - \usepackage{xunicode}
+   - \usepackage{float}
+   - \usepackage{pdflscape}
+   - \newcommand{\blandscape}{\begin{landscape}}
+   - \newcommand{\elandscape}{\end{landscape}}
+output:
+  pdf_document:
+    toc: false
+    keep_tex: no
+    latex_engine: xelatex
+---
+\fontsize{12}{16}\selectfont
+\captionsetup[table]{labelformat=empty}
+
+```{r titlePage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+library(dplyr)
+library(kableExtra)
+```
+
+\newpage
+
+## Introduction
+
+This report presents an analysis of genes targeted during T cell therapy over 783 treated subjects (Described in Jadlowski et al.)
+
+Lentiviral and gammaretroviral vectors integrate into genomes of targeted host cells in these studies T-cells. These genomic locations of vector integrations are identifiable through integration site sequencing. Abundances of individual cell clones can be inferred by the sonicLength method (Berry et al. 2012). In this report, we analyzed the data collected from integration site sequencing for subjects treated with engineered T cells.
+
+We constructed 4 gene lists based on: 1 & 2) decreased (D) or enriched (E) integration site occurrence in patient samples relative to the initial transduction product, 3) peak clonal abundance (A), and 4) longitudinal clonal persistence (L).
+
+More about each of these criteria is below:
+```{r, DEAL_table, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+tab <- tibble(class = c('Depleted (D)', 'Enriched (E)', 'Abundant (A)', 'Longitudinal (L)'),
+              desc  = c('Depleted genes show a significant decrease (p $\\leq$ 0.05) in integration frequency at later time points.',
+                        'Enriched genes show a significant increase (p $\\leq$ 0.05) in integration frequency at later time points.',
+                        'Abundant genes are genes associated with the top 1\\% of clonal abundance estimates at later time points.',
+                        paste0('Longitudinal genes are genes with $\\geq$ ', config$longitudinal_minNumSites, ' unique integrations from $\\geq$ ',                                              config$longitudinal_minNumSubjects, ' patients recovered $\\geq$ ', config$longitudinal_minTimeDays, ' days post-transduction.')))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL) %>%
+  kable_styling(latex_options = c("HOLD_position"), font_size = 9)
+```
+
+Note that integration sites are sampled from a larger population, so that that sampling of each specimen is incomplete.
+
+\newpage
+
+The assignment of genes to the Enriched and Depleted categories is dependent on gene specific Fisher's Exact tests 
+(uncorrected p-values $\leq$ 0.05). Figure 1 below depicts the number of genes associated with more than one category.  
+  
+\vspace{0.25cm}
+
+Figure 1.  
+
+```{r, upsetPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5.5, cache=FALSE}
+upSetPlot
+```
+
+\newpage
+
+The table below contains gene that have been associated with the Enriched, Abundant, and Longintudinal
+categories. These genes are of particular interest since three separate metrics suggests that integration 
+near these genes may bolster persistence and/or proliferation over time.  
+
+\vspace{0.25cm}
+
+```{r, ELA_genes,echo=FALSE, message=FALSE, warning=FALSE}
+tab <- select(subset(k, flag == 'EAL'), gene, subjects, totalSites, percentChange, maxAbund, longitudinalSites, oncoGene, flag)
+tab <- arrange(tab, desc(percentChange))
+tab$percentChange <- sprintf("%.1f%%", tab$percentChange)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab,
+      format = "latex", linesep = "", align='c', booktabs = T, row.names = FALSE, longtable = TRUE, caption = 'Table A. Genes annotated as EAL.') %>%
+      kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 10)
+```
+
+\newpage
+
+The degree of integration near suspected oncogenes is important given that genotoxity 
+through disruption of oncogene transcription units or over expression via promoter insertion 
+can potentially lead to adverse events. Here we test for significance of overlap between 
+select oncogene lists and genes near recovered integration events. Test data sets include:  
+
+\vspace{0.25cm}
+
+**allOnco** [`r ppNum(length(oncoGeneLists[['allOnco']]))` genes [(link)](http://www.bushmanlab.org/links/genelists)]: A comprehensive list of oncogenes compiled from multiple projects and consortia.   
+  
+\vspace{0.25cm}
+  
+**cosmic** [`r ppNum(length(oncoGeneLists[['cosmic']]))` genes [(link)](https://www.sanger.ac.uk/tool/cosmic)]:  "Catalogue Of Somatic Mutations In Cancer"  is an expert-curated database 
+encompassing the wide variety of somatic mutation mechanisms causing human cancer.  
+  
+\vspace{0.25cm}
+  
+**cosmic_tsg** [`r ppNum(length(oncoGeneLists[['cosmic_tsg']]))` genes]: This gene list is a subset of the cosmic gene list annotated as tumor suppressors.   
+  
+\vspace{0.25cm}
+
+Table B summarizes the overlap of integrated genes, categorized with correction for multiple comparisons, and the different oncogene lists. 
+Significance of enrichment was tested using Fisher's Exact test of proportions. 
+
+\vspace{0.25cm}
+
+```{r, oncoGeneTable, echo=FALSE, message=FALSE, warning=FALSE}
+kable(correctedGeneListTests, format = "latex", align='lcccl', linesep = c('', '', '', '\\hline'), booktabs = T, row.names = FALSE, caption = 'Table B2.') %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+\newpage
+
+Genes associated with the Enriched category have greater integration frequencies at later time points compared to earlier time points
+which suggests that integration near these genes bolsters cell survival.
+
+\vspace{0.25cm}
+
+```{r Table2_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        "p-value from Fisher's Exact test.",
+                        "BH corrected p-value from Fisher's Exact test.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+
+```{r, E_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table C. Top 100 enriched genes. p-Values are marked with an * if $\\leq$ 0.05.'
+if(nrow(k[grepl('E', k$flag),]) <= 100) caption <- 'Table C. Enriched genes. p-Values are marked with an * if $\\leq$ 0.05.'
+
+tab <- select(k[grepl('E', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, pVal.adj, oncoGene, flag) %>% arrange(pVal, desc(percentChange)) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f\\%%", tab$percentChange)
+
+tab$pVal <- ifelse(tab$pVal <= 0.05, paste0(formatC(tab$pVal, format = "e", digits = 1), ' *'), 
+                   formatC(tab$pVal, format = "e", digits = 1))
+tab$pVal.adj <- ifelse(tab$pVal.adj <= 0.05, paste0(formatC(tab$pVal.adj, format = "e", digits = 1), ' *'), 
+                      formatC(tab$pVal.adj, format = "e", digits = 1))
+
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab, format = "latex", align='cccccllc', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>% kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9)
+```
+
+\newpage
+
+Genes associated with the Depleted category have lower integration frequencies at later time points compared to earlier time points
+which suggests that integration near these genes may be detrimental to cell survival.
+
+\vspace{0.25cm}
+
+```{r Table3_legend, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        "p-value from Fisher's Exact test.",
+                        "BH corrected p-value from Fisher's Exact test.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, D_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table D. Top 100 depleated genes. p-Values are marked with an * if $\\leq$ 0.05.'
+if(nrow(k[grepl('D', k$flag),]) <= 100) caption <- 'Table D. Depleated genes. p-Values are marked with an * if $\\leq$ 0.05.'
+
+tab <- select(k[grepl('D', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, pVal.adj, oncoGene, flag) %>% arrange(pVal, percentChange) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f\\%%", tab$percentChange)
+tab$pVal <- ifelse(tab$pVal <= 0.05, paste0(formatC(tab$pVal, format = "e", digits = 1), ' *'), 
+                   formatC(tab$pVal, format = "e", digits = 1))
+tab$pVal.adj <- ifelse(tab$pVal.adj <= 0.05, paste0(formatC(tab$pVal.adj, format = "e", digits = 1), ' *'), 
+                      formatC(tab$pVal.adj, format = "e", digits = 1))
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+  
+\newpage
+
+Genes associated with the Abundant category reached high levels of clonal abundance measured by the sonic abundance method
+at later time points which suggests that integration near these genes may bolster cell division. For this analysis, the 
+threshold for inclusion is an estimated abundances $\geq$ `r config$minAbundCatThreshold` cells.
+
+\vspace{0.25cm}
+
+```{r Table4_legend, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'lateCount', 'maxAbund', 'maxRelAbund', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Maximum estimated clonal abundance observered > ', config$earlyVsLateCutoffDays, ' days.'),
+                        paste0('Maximum relative sample clonal abundance observered > ', config$earlyVsLateCutoffDays, ' days.'),
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, A_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table E. Top 100 abundant genes.'
+if(nrow(k[grepl('A', k$flag),]) <= 100) caption <- 'Table E. Abundant genes.'
+
+tab <- select(k[grepl('A', k$flag),], gene, subjects, lateCount, maxAbund, maxRelAbund, oncoGene, flag) %>% arrange(desc(maxAbund)) %>% dplyr::slice(1:100)
+tab$maxRelAbund <- sprintf("%.2f\\%%", tab$maxRelAbund)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+  
+\newpage
+
+Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSubjects` different integrations across $\geq$ 
+`r config$longitudinal_minNumSubjects` different subjects are observed $\geq$ `r config$longitudinal_minTimeDays` days post-transduction.
+
+\vspace{0.25cm}
+
+```{r, L_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+caption <- ''
+tab <- tibble(class = c('gene', 'totalSites', 'longitudinalSites', 'longitudinalSubjects', 'longitudinalTimePoints', 'latestTimePointDays', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of unique integrations associated with gene.',  
+                        paste0('Total number of unique integrations associated with gene recovered $\\geq$ ', 
+                                           config$longitudinal_minTimeDays, ' days.'),  
+                        paste0('Number of subjects associated with integrations associated with gene recovered $\\geq$ ', 
+                                           config$longitudinal_minTimeDays, ' days.'), 
+                        paste0('Number of time points sampled $\\geq$ ', 
+                                           config$longitudinal_minTimeDays, ' days.'),
+                        "Longest time point sampled.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, L_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table F. Top 100 longitudinaly persistant genes.'
+if(nrow(k[grepl('L', k$flag),]) <= 100) caption <- 'Table F. Longitudinaly persistant genes.'
+
+tab <- select(k[grepl('L', k$flag),], gene, totalSites, longitudinalSites, longitudinalSubjects, longitudinalTimePoints, latestTimePointDays, oncoGene) %>% 
+  arrange(desc(latestTimePointDays), desc(longitudinalSites)) %>% dplyr::slice(1:100)
+
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+
+\newpage
+
+# Volcano plot analysis
+
+Changes in gene integration frequencies between pre- and post- transfusion samples and their significance is 
+shown below in Figure 2. Changes in integration frequency is defined as *(f - fo) / fo* where *f* is the integration 
+frequency post-transfusion and *fo* is the integration of pre-infused transduction material. The significance of these 
+changes is assessed using Fisher's Exact tests corrected for multiple comparisons. A similar plot using uncorrected 
+p-values can be found at the send of this report (Figure S1).
+
+\vspace{0.25cm}
+
+Figure 2.  
+
+```{r, correctedVolcanoPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+pValAdjVolcanoPlot
+```
+
+\newpage
+
+The following table reports clusters of integration sites identified by comparing sites recovered on or before day `r config$earlyVsLateCutoffDays` and those recovered afterwards. Clusters are identified using the geneRxCluster (ScanStatistics) software package (Berry et al. 2014). The cluster ranges in the first column are links to the UCSC genome browser where integrations with positive orientations are shown with blue tick marks while integrations with reverse orientations are shown with red tick marks. Tick marks are shaded my maximum estimated abundance values where darker shades indicated higher abundance values.
+
+\vspace{1.0cm}
+
+```{r, scanStats, echo=FALSE, message=FALSE, warning=FALSE}
+z <- scanStatsDF
+z$nearestGenes <- gsub('\\s*,\\s*', "\n", z$nearestGenes)
+z$cluster <- paste0("\\href{", z$url, "}{", z$cluster, "}")
+z$nearestGenes <- linebreak(z$nearestGenes, align = 'l')
+
+knitr::kable(select(z, -url), "latex", longtable = T, linesep = "", booktabs=T, escape = F, ) %>%
+  kable_styling(latex_options = c("repeat_header", "striped", "hold_position"), font_size = 9)
+```
+
+\newpage
+
+## References
+
+1. Denlinger N, Bond D, Jaglowski S. CAR T-cell therapy for B-cell lymphoma. Curr Probl Cancer. 
+   2022 Feb;46(1):100826. doi: 10.1016/j.currproblcancer.2021.100826. Epub 2021 Dec 25
+  
+2. Berry CC, Gillet NA, Melamed A, Gormley N, Bangham CR, Bushman FD. Estimating abundances of 
+   retroviral insertion sites from DNA fragment length data. Bioinformatics. 2012 Mar 15;28(6):755-62. 
+   doi: 10.1093/bioinformatics/bts004. Epub 2012 Jan 11.
+   
+3. Berry CC, Ocwieja KE, Malani N, Bushman FD. Comparing DNA integration site clusters with scan statistics.
+   Bioinformatics. 2014 Jun 1;30(11):1493-500. doi: 10.1093/bioinformatics/btu035. Epub 2014 Jan 30.
+  
+\vspace{1.0cm}
+  
+## Software parameters
+
+```{r lastPage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+tab <- data.frame(parameter = names(config), value = unlist(config))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+\newpage
+
+Figure S1. Volcano plot using uncorrected Fisher Exact test p-values.  
+
+\vspace{1.0cm}
+
+```{r, unCorrectedVolcanoPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+pValVolcanoPlot
+```
+
+
